@@ -6,25 +6,40 @@ import json
 app = Flask(__name__)
 
 # Set up Google Cloud Storage
+# Make sure the path to your service account key file is correct
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "path/to/your/service-account-file.json"
 client = storage.Client()
+
+# Replace 'your-gcs-bucket' with the actual name of your bucket
 bucket_name = 'your-gcs-bucket'
-bucket = client.get_bucket(bucket_name)
+
+try:
+    bucket = client.get_bucket(bucket_name)
+except Exception as e:
+    print(f"Error accessing bucket: {e}")
+    bucket = None
 
 @app.route('/upload', methods=['POST'])
 def upload_data():
+    if bucket is None:
+        return jsonify({"error": "Bucket not accessible"}), 500
+
     try:
         # Get the JSON data from the request
         data = request.get_json()
-        
+
+        # Validate the data
+        if not data:
+            return jsonify({"error": "Invalid JSON data"}), 400
+
         # Convert the JSON data to a string and print it (for demonstration purposes)
         data_str = json.dumps(data)
         print(f"Received data: {data_str}")
-        
+
         # Save the data to Google Cloud Storage
         blob = bucket.blob('path/in/bucket/data.json')
         blob.upload_from_string(data_str, content_type='application/json')
-        
+
         return jsonify({"message": "Data received and uploaded to GCS"}), 200
     except Exception as e:
         print(f"Error: {e}")
